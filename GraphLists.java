@@ -1,9 +1,17 @@
 // Simple weighted graph representation 
 // Uses an Adjacency Linked Lists, suitable for sparse graphs
+// Next Steps
+// 1. Ensure the code uses enum colors instead of visited[]
+// 2. Complete the code i.e., do kruskal in seperate file.
+// 3. Go over the code, understand fully, be able to explain it.
+// 4. Run real world graph like a road network, run the mst and kruskal code on it and not running time and memory usage
+// 5. Write report
 
 import java.io.*;
 import java.util.ArrayDeque;
 import java.util.Queue;
+
+enum Color { WHITE, GRAY, BLACK }
 
 class Heap
 {
@@ -67,7 +75,12 @@ class Heap
 
             //compare left child with right
             if(j < N && dist[a[j + 1]] < dist[a[j]]){
-                j = j + 1; //right child is smaller
+                j++; //right child is smaller
+            }
+
+            //if v is already smaller than or equal to smallest child, stop
+            if(dist[v] <= dist[a[j]]){
+                break;
             }
 
             //swap parent with smallest child
@@ -84,7 +97,8 @@ class Heap
 
 
     public void insert( int x) 
-    {
+    {   
+
         a[++N] = x;
         siftUp( N);
     }
@@ -97,9 +111,21 @@ class Heap
         a[N+1] = 0;  // put null node into empty spot
         
         a[1] = a[N--];
-        siftDown(1);
+
+        if(N > 0){
+            siftDown(1);
+        }
         
         return v;
+    }
+
+
+    public void heapDisplay(){
+        System.out.println("Heap Contents:");
+        for(int i = 1;i <= N;i++){
+            System.out.print(a[i] + " ");
+        }
+        System.out.println();
     }
 
 }
@@ -122,8 +148,9 @@ class Graph {
     private int[] mst;
     
     // used for traversing graph
-    private int[] visited;
-    private int id;
+    //private int[] visited;
+    //private int id;
+    private Color[] color;
     
     
     // default constructor
@@ -154,7 +181,12 @@ class Graph {
             adj[v] = z;               
         
         // create array for representing vertex visits
-        visited = new int[V + 1];
+        //visited = new int[V + 1];
+        color = new Color[V + 1];
+
+        for(v = 1; v <= V; v++){
+            color[v] = Color.WHITE;
+        }
 
        // read the edges
         System.out.println("Reading edges from text file");
@@ -208,7 +240,9 @@ class Graph {
     }
 
     public void DF(int s){
-        visited[s] = 1;
+        //visited[s] = 1;
+        color[s] = Color.GRAY;
+
         System.out.println("Visited: " + toChar(s));
         
         Node t = adj[s];
@@ -222,7 +256,7 @@ class Graph {
 
             System.out.println("Found " + toChar(s) + "->" + toChar(v));
 
-            if(visited[v] == 0){
+            if(color[v] == Color.WHITE){
                 System.out.println("Going from " + toChar(s) + " to " + toChar(v));
                 DF(v); //recursive call
                 System.out.println("Going back to " + toChar(s) + " from " + toChar(v));
@@ -232,16 +266,21 @@ class Graph {
 
             t = t.next;
         }  
+
+        color[s] = Color.BLACK;
     }
 
     public void breadthFirst(int s){
         Queue<Integer> q = new ArrayDeque<>();
 
-        visited[s] = 1;
-        System.out.println("Visited Initial Vertex " + toChar(s));
-        System.out.println("Inserting initial vertex into queue");
+        //visited[s] = 1;
+        //System.out.println("Visited Initial Vertex " + toChar(s));
+        //System.out.println("Inserting initial vertex into queue");
 
+        color[s] = Color.GRAY;
         q.add(s);
+
+        System.out.println("Starting BFS at " + toChar(s));
 
         while(!q.isEmpty()){
             int u = q.remove();
@@ -255,9 +294,10 @@ class Graph {
                 int v = t.vert;
                 System.out.println("Found " + toChar(u) + "->" + toChar(v));
 
-                if(visited[v] == 0){
+                if(color[v] == Color.WHITE){
                     System.out.println("Inserting " + toChar(v) + " into queue");
-                    visited[v] = 1;
+                    //visited[v] = 1;
+                    color[v] = Color.GRAY;
                     q.add(v);
                 }
                 
@@ -265,6 +305,8 @@ class Graph {
 
                 t = t.next;
             }
+
+            color[u] = Color.BLACK;
         }
     }
 
@@ -280,25 +322,145 @@ class Graph {
 	{
         int v, u;
         int wgt, wgt_sum = 0;
-        int[]  dist, parent, hPos;
+        int[] dist = new int[V + 1]; 
+        int[] parent = new int[V + 1]; 
+        int[] hPos = new int[V + 1];
+        mst = new int[V + 1];
         Node t;
 
-        //code here
+        //initialise arrays
+        for(int i = 1; i <= V;i++){
+            dist[i] = Integer.MAX_VALUE;
+            //System.out.println("dist[" + i + "] = " + dist[i]);
+            parent[i] = -1;
+            //System.out.println("parent[" + i + "] = " + parent[i]);
+            hPos[i] = -1; //not in heap
+            //System.out.println("hPos[" + i + "] = " + hPos[i]);
+            mst[i] = -1;
+            //System.out.println("mst[" + i + "] = " + mst[i]); 
+        }
+
+
+        //insert starting nodes priority
+        dist[s] = 0;
+        Heap h =  new Heap(V, dist, hPos);
+        if(s > 0 && s < V){
+            h.insert(s);
+        }
         
-        //dist[s] = 0;
-        
-        //Heap h =  new Heap(V, dist, hPos);
-        //h.insert(s);
-        
-        //while ( ...)  
-        //{
-            // most of alg here
+        int p = 0;
+        while (!h.isEmpty())  
+        {
+            p++;
+            System.out.println();
+            System.out.println("while(!h.isEmpty()) iteration: " + p);
+            System.out.println();
+            u = h.remove(); //vertex of smallest dist[u]
+            mst[u] = parent[u];
+            wgt_sum += dist[u];
+            // u is now part of MST
+            System.out.println(toChar(u) + " / " + u + " is now part of MST");
+            //print heap contents for debugging
+            System.out.println();
+            h.heapDisplay();
+            //print dist contents for debugging
+            System.out.println("Dist Contents:");
+            for(int i = 1;i <= V;i++){
+            if(dist[i] == Integer.MAX_VALUE){
+                System.out.print("_ ");
+            }
+            else{
+                System.out.print(dist[i] + " ");
+                }
+            }
+            System.out.println();
             
-       // }
+            //print parent contents for debugging
+            System.out.println("Parent Contents:");
+            for(int i = 1;i <= V;i++){
+                System.out.print(parent[i] + " ");
+            }
+            System.out.println(); 
+
+    
+            t = adj[u];
+
+            int k = 0;
+            while(t != z){
+                k++;
+                System.out.println();
+                System.out.println("while(t != z) iteration: " + k);
+                System.out.println();
+                System.out.println("Traversing neighbours of " + toChar(u));
+                v = t.vert;
+                //System.out.println("v = " + v);
+                wgt = t.wgt;
+                //System.out.println("wgt = " + wgt);
+
+                if(hPos[v] == -1){
+                    System.out.println(toChar(v) + " / " + v + " Not in heap, inserting...");
+                    dist[v] = wgt;
+                    parent[v] = u;
+                    h.insert(v);
+                    //h.heapDisplay();
+                     //dist contents for debugging
+                    /*System.out.println("Dist Contents:");
+                        for(int i = 1;i <= V;i++){
+                            if(dist[i] == Integer.MAX_VALUE){
+                                System.out.print("-1 ");
+                            }
+                            else{
+                                System.out.print(dist[i] + " ");
+                            }
+                        }
+                    System.out.println();*/
+                    //parent contents for debugging
+                    /*System.out.println("Parent Contents:");
+                        for(int i = 1;i <= V;i++){
+                            System.out.print(parent[i] + " ");
+                        }
+                    System.out.println(); */
+                }
+                else if(hPos[v] > 0 && wgt < dist[v]){
+                    System.out.println("Found lower edge, connecting " + toChar(u) + " and " + toChar(v) +  " updating heap...");
+                    dist[v] = wgt;
+                    parent[v] = u;
+
+                    h.siftUp(hPos[v]);
+                    //h.heapDisplay();
+                    
+                    //dist contents for debugging
+                    /*System.out.println("Dist Contents:");
+                        for(int i = 1;i <= V;i++){
+                            if(dist[i] == Integer.MAX_VALUE){
+                                System.out.print("-1 ");
+                            }
+                            else{
+                                System.out.print(dist[i] + " ");
+                            }
+                        }
+                    System.out.println();*/
+                    //parent contents for debugging
+                    /*System.out.println("Parent Contents:");
+                        for(int i = 1;i <= V;i++){
+                            System.out.print(parent[i] + " ");
+                        }
+                    System.out.println(); */
+                }
+                
+                System.out.println();
+                System.out.println("---------------------------------");
+                System.out.println();
+                t = t.next;
+            }
+            System.out.println();
+            System.out.println("*******************************************");
+            System.out.println();
+        }
         System.out.print("\n\nWeight of MST = " + wgt_sum + "\n");
-        
-                  		
-	}
+
+        showMST();
+    }
     
     public void showMST()
     {
@@ -324,11 +486,23 @@ public class GraphLists {
         Graph g = new Graph(fname);
        
         g.display();
-
-        g.DF(s);
-        System.out.println("Depth First Traversal Complete");
-        //g.breadthFirst(s);
-        //g.MST_Prim(s);   
-        //g.SPT_Dijkstra(s);               
+        
+        System.out.println();
+        System.out.println("-----------------------------");
+        System.out.println("Depth First Search Beginning:");
+        //g.DF(s);
+        System.out.println("Depth First Search Complete");
+        System.out.println();
+        System.out.println("------------------------------");
+        System.out.println();
+        System.out.println("Breadth First Search Beginning:");
+        g.breadthFirst(s);
+        System.out.println("Breadth First Search Complete");
+        System.out.println();
+        System.out.println("-------------------------------");
+        System.out.println();
+        System.out.println("Prim's Beginning:");
+        g.MST_Prim(s);
+        System.out.println("Prim's Complete");
     }
 }
